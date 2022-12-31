@@ -1,21 +1,31 @@
-const mongoose = require("mongoose");
+const { Schema, model } = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const Post = require("./post");
 
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true, default: "Anonymous" },
-  email: { type: String, required: true, unique: true },
-  password: {
-    type: String,
-    require: true,
-    minLength: 6,
-    validate(value) {
-      if (value.toLowerCase().includes("password"))
-        throw new Error("Password can not contain password");
+const userSchema = new Schema(
+  {
+    name: { type: String, required: true, default: "Anonymous" },
+    email: { type: String, required: true, unique: true },
+    password: {
+      type: String,
+      require: true,
+      minLength: 6,
+      validate(value) {
+        if (value.toLowerCase().includes("password"))
+          throw new Error("Password can not contain password");
+      },
     },
+    age: { type: Number, min: 0 },
+    tokens: [{ token: { type: String, required: true } }],
   },
-  age: { type: Number, min: 0 },
-  tokens: [{ token: { type: String, required: true } }],
+  { timestamps: true }
+);
+
+userSchema.virtual("post", {
+  ref: "Post",
+  localField: "_id",
+  foreignField: "owner",
 });
 
 userSchema.pre("save", async function (next) {
@@ -24,6 +34,13 @@ userSchema.pre("save", async function (next) {
     return next();
   }
   user.password = await bcrypt.hash(user.password, 8);
+  next();
+});
+
+userSchema.pre("remove", async function (next) {
+  const user = this;
+  console.log(this);
+  await Post.deleteMany({ owner: user._id });
   next();
 });
 
@@ -56,6 +73,6 @@ userSchema.methods.toJSON = function () {
   return userObject;
 };
 
-const User = mongoose.model("Users", userSchema);
+const User = model("User", userSchema);
 
 module.exports = User;

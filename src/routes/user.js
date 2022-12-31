@@ -14,6 +14,13 @@ route.post("/login", async (req, res) => {
   }
 });
 
+route.delete("/me", auth, async (req, res) => {
+  const { _id } = req.user;
+  const deletedUser = await User.deleteOne({ _id });
+  if (!deletedUser) return res.status(404).json({ error: "unable to delete" });
+  res.json(deletedUser);
+});
+
 route.post("/", async (req, res) => {
   const acceptedField = ["name", "email", "age", "password"];
   const isMatched = Object.keys(req.body).every((field) =>
@@ -31,6 +38,9 @@ route.post("/", async (req, res) => {
 });
 
 route.get("/me", auth, async (req, res) => {
+  const user = req.user;
+  await user.populate("post");
+  console.log(user);
   res.send(req.user);
 });
 
